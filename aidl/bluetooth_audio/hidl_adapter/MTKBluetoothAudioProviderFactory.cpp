@@ -63,6 +63,7 @@ using AudioCapabilities_2_1 =
 using AudioCapabilities_2_2 =
         ::vendor::mediatek::hardware::bluetooth::audio::V2_2::AudioCapabilities;
 using HidlStatus = ::vendor::mediatek::hardware::bluetooth::audio::V2_1::Status;
+
 const static std::unordered_map<SessionType, SessionType_2_1> session_type_aidl_to_2_1_map{
         {SessionType::A2DP_SOFTWARE_ENCODING_DATAPATH,
          SessionType_2_1::A2DP_SOFTWARE_ENCODING_DATAPATH},
@@ -96,6 +97,9 @@ inline SessionType_2_2 to_session_type_2_2(const SessionType& session_type_aidl)
 }
 
 inline bool isHardwareSessionType(const SessionType& session_type_aidl) {
+    if (to_session_type_2_2(session_type_aidl) == SessionType_2_2::UNKNOWN) {
+        return false;
+    }
     switch (session_type_aidl) {
         case SessionType::A2DP_HARDWARE_OFFLOAD_ENCODING_DATAPATH:
         case SessionType::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH:
@@ -117,6 +121,7 @@ inline bool isHardwareSessionType(const SessionType& session_type_aidl) {
         case SessionType::HFP_SOFTWARE_DECODING_DATAPATH:
         case SessionType::LE_AUDIO_BROADCAST_SOFTWARE_DECODING_DATAPATH:
         case SessionType::UNKNOWN:
+        default:
             return false;
     }
 }
@@ -197,7 +202,7 @@ inline PcmCapabilities from_pcm_parameters_2_1(const PcmParameters_2_1& capabili
             .sampleRateHz = from_sample_rate_2_1(capabilities.sampleRate),
             .channelMode = from_channel_mode_2_1(capabilities.channelMode),
             .bitsPerSample = from_bits_per_sample_2_1(capabilities.bitsPerSample),
-            .dataIntervalUs = {20000},  // A2DP frame duration
+            .dataIntervalUs = {20000},
     };
 }
 
@@ -341,8 +346,6 @@ inline LdacCapabilities from_ldac_parameters_2_1(const LdacParameters_2_1& param
     return LdacCapabilities{
             .sampleRateHz = from_sample_rate_2_1(parameters.sampleRate),
             .channelMode = from_ldac_channel_mode_2_1(parameters.channelMode),
-            // according to types.hal, all qualities must be supported, and hence this isn't a
-            // bitfield in HIDL
             .qualityIndex = {LdacQualityIndex::HIGH, LdacQualityIndex::MID, LdacQualityIndex::LOW,
                              LdacQualityIndex::ABR},
             .bitsPerSample = from_bits_per_sample_2_1(parameters.bitsPerSample),
@@ -358,8 +361,8 @@ inline AptxCapabilities from_aptx_parameters_2_1(const AptxParameters_2_1& param
 }
 
 inline CodecCapabilities::VendorCapabilities from_lhdc_parameters_2_1(
-        const LhdcParameters_2_1& parameters) {
-    return CodecCapabilities::VendorCapabilities{};  // TODO: Implement this
+        [[maybe_unused]] const LhdcParameters_2_1& parameters) {
+    return CodecCapabilities::VendorCapabilities{};
 }
 
 inline CodecCapabilities::Capabilities from_codec_capabilities_capabilities_2_1(
@@ -382,6 +385,7 @@ inline CodecCapabilities::Capabilities from_codec_capabilities_capabilities_2_1(
                     CodecCapabilities::Capabilities::Tag::aptxCapabilities>(
                     from_aptx_parameters_2_1(capabilities.aptxCapabilities()));
         case CodecCapabilities_2_1::Capabilities::hidl_discriminator::lhdcCapabilities:
+        default:
             return CodecCapabilities::Capabilities::make<
                     CodecCapabilities::Capabilities::Tag::vendorCapabilities>(
                     from_lhdc_parameters_2_1(capabilities.lhdcCapabilities()));
@@ -395,9 +399,8 @@ inline CodecCapabilities from_codec_capabilities_2_1(const CodecCapabilities_2_1
 }
 
 inline LeAudioCodecCapabilitiesSetting from_le_audio_codec_capabilities_2_2(
-        const LeAudioCodecCapabilities_2_2& capabilities) {
-    // refer to getProviderCapabilities comment below
-    LOG(FATAL) << "LE Audio Codec capabilities shouldn't be queried from MTK 2.2 HIDL";
+        [[maybe_unused]] const LeAudioCodecCapabilities_2_2& capabilities) {
+    LOG(WARNING) << "LE Audio Codec capabilities shouldn't be queried from MTK 2.2 HIDL";
     return LeAudioCodecCapabilitiesSetting{};
 }
 
@@ -407,6 +410,7 @@ inline AudioCapabilities from_audio_capabilities_2_1(const AudioCapabilities_2_1
             return AudioCapabilities::make<AudioCapabilities::Tag::pcmCapabilities>(
                     from_pcm_parameters_2_1(capabilities.pcmCapabilities()));
         case AudioCapabilities_2_1::hidl_discriminator::codecCapabilities:
+        default:
             return AudioCapabilities::make<AudioCapabilities::Tag::a2dpCapabilities>(
                     from_codec_capabilities_2_1(capabilities.codecCapabilities()));
     }
@@ -421,6 +425,7 @@ inline AudioCapabilities from_audio_capabilities_2_2(const AudioCapabilities_2_2
             return AudioCapabilities::make<AudioCapabilities::Tag::a2dpCapabilities>(
                     from_codec_capabilities_2_1(capabilities.codecCapabilities()));
         case AudioCapabilities_2_2::hidl_discriminator::leAudioCapabilities:
+        default:
             return AudioCapabilities::make<AudioCapabilities::Tag::leAudioCapabilities>(
                     from_le_audio_codec_capabilities_2_2(capabilities.leAudioCapabilities()));
     }
@@ -429,7 +434,9 @@ inline AudioCapabilities from_audio_capabilities_2_2(const AudioCapabilities_2_2
 void MTKBluetoothAudioProviderFactory::loadFactoriesIfNeeded() {
     if (factory_2_1 == nullptr) {
         factory_2_1 = BluetoothAudioProviderFactory_2_1::getService("default");
-        factory_2_2 = BluetoothAudioProviderFactory_2_2::castFrom(factory_2_1);
+        if (factory_2_1 != nullptr) {
+            factory_2_2 = BluetoothAudioProviderFactory_2_2::castFrom(factory_2_1);
+        }
     }
 }
 
@@ -441,39 +448,53 @@ ndk::ScopedAStatus MTKBluetoothAudioProviderFactory::openProvider(
         return factory_sw.openProvider(session_type, _aidl_return);
     }
     loadFactoriesIfNeeded();
-    HidlStatus provider_status;
+    if (factory_2_1 == nullptr) {
+        return factory_sw.openProvider(session_type, _aidl_return);
+    }
+    if (factory_2_2 == nullptr && to_session_type_2_1(session_type) == SessionType_2_1::UNKNOWN) {
+        return factory_sw.openProvider(session_type, _aidl_return);
+    }
+
+    HidlStatus provider_status = HidlStatus::FAILURE;
     std::shared_ptr<IBluetoothAudioProvider> provider = nullptr;
     std::promise<void> hidl_openProvider_promise;
     auto hidl_openProvider_future = hidl_openProvider_promise.get_future();
+    ::android::hardware::Return<void> hidl_ret;
     if (factory_2_2 != nullptr) {
-        factory_2_2->openProvider_2_1(
+        hidl_ret = factory_2_2->openProvider_2_1(
                 to_session_type_2_2(session_type),
                 [&provider_status, &hidl_openProvider_promise, &provider](
                         HidlStatus status,
                         const android::sp<IBluetoothAudioProvider_2_2>& provider_hidl) {
                     provider_status = status;
-                    if (status == HidlStatus::SUCCESS) {
+                    if (status == HidlStatus::SUCCESS && provider_hidl != nullptr) {
                         provider = ::ndk::SharedRefBase::make<MTKBluetoothAudioProvider>(
                                 provider_hidl);
                     }
                     hidl_openProvider_promise.set_value();
                 });
     } else {
-        factory_2_1->openProvider(
+        hidl_ret = factory_2_1->openProvider(
                 to_session_type_2_1(session_type),
                 [&provider_status, &hidl_openProvider_promise, &provider](
                         HidlStatus status,
                         const android::sp<IBluetoothAudioProvider_2_1>& provider_hidl) {
                     provider_status = status;
-                    if (status == HidlStatus::SUCCESS) {
+                    if (status == HidlStatus::SUCCESS && provider_hidl != nullptr) {
                         provider = ::ndk::SharedRefBase::make<MTKBluetoothAudioProvider>(
                                 provider_hidl);
                     }
                     hidl_openProvider_promise.set_value();
                 });
     }
+    if (!hidl_ret.isOk()) {
+        LOG(ERROR) << __func__ << ": HIDL openProvider failed: " << hidl_ret.description();
+        factory_2_1 = nullptr;
+        factory_2_2 = nullptr;
+        return ndk::ScopedAStatus::fromExceptionCode(EX_SERVICE_SPECIFIC);
+    }
     hidl_openProvider_future.get();
-    if (provider_status == HidlStatus::SUCCESS) {
+    if (provider_status == HidlStatus::SUCCESS && provider != nullptr) {
         *_aidl_return = provider;
         return ndk::ScopedAStatus::ok();
     } else if (provider_status == HidlStatus::UNSUPPORTED_CODEC_CONFIGURATION) {
@@ -485,41 +506,47 @@ ndk::ScopedAStatus MTKBluetoothAudioProviderFactory::openProvider(
 
 ndk::ScopedAStatus MTKBluetoothAudioProviderFactory::getProviderCapabilities(
         const SessionType session_type, std::vector<AudioCapabilities>* _aidl_return) {
-    if (session_type != SessionType::A2DP_HARDWARE_OFFLOAD_ENCODING_DATAPATH &&
-        session_type != SessionType::A2DP_HARDWARE_OFFLOAD_DECODING_DATAPATH) {
-        // Do get HFP/LEA offload codecs (anything newer than A2DP) from sw factory as
-        // well as they can be configured using XML, instead of being hardcoded like
-        // A2DP defaults are. AOSP capability AIDL is a poor match for the MTK LEA HIDL,
-        // so these must be configured seperately if intended to be supported.
+    if (session_type != SessionType::A2DP_HARDWARE_OFFLOAD_ENCODING_DATAPATH) {
         return factory_sw.getProviderCapabilities(session_type, _aidl_return);
     }
     loadFactoriesIfNeeded();
+    if (factory_2_1 == nullptr) {
+        return factory_sw.getProviderCapabilities(session_type, _aidl_return);
+    }
     std::promise<void> hidl_openProvider_promise;
     auto hidl_openProvider_future = hidl_openProvider_promise.get_future();
+    ::android::hardware::Return<void> hidl_ret;
     if (factory_2_2 != nullptr) {
-        factory_2_2->getProviderCapabilities_2_1(
+        hidl_ret = factory_2_2->getProviderCapabilities_2_1(
                 to_session_type_2_2(session_type),
                 [&hidl_openProvider_promise,
                  &_aidl_return](hidl_vec<AudioCapabilities_2_2> codec_capabilities_hidl) {
                     _aidl_return->resize(codec_capabilities_hidl.size());
-                    for (int i = 0; i < codec_capabilities_hidl.size(); i++) {
+                    for (size_t i = 0; i < codec_capabilities_hidl.size(); i++) {
                         _aidl_return->at(i) =
                                 from_audio_capabilities_2_2(codec_capabilities_hidl[i]);
                     }
                     hidl_openProvider_promise.set_value();
                 });
     } else {
-        factory_2_1->getProviderCapabilities(
+        hidl_ret = factory_2_1->getProviderCapabilities(
                 to_session_type_2_1(session_type),
                 [&hidl_openProvider_promise,
                  &_aidl_return](hidl_vec<AudioCapabilities_2_1> codec_capabilities_hidl) {
                     _aidl_return->resize(codec_capabilities_hidl.size());
-                    for (int i = 0; i < codec_capabilities_hidl.size(); i++) {
+                    for (size_t i = 0; i < codec_capabilities_hidl.size(); i++) {
                         _aidl_return->at(i) =
                                 from_audio_capabilities_2_1(codec_capabilities_hidl[i]);
                     }
                     hidl_openProvider_promise.set_value();
                 });
+    }
+    if (!hidl_ret.isOk()) {
+        LOG(ERROR) << __func__
+                   << ": HIDL getProviderCapabilities failed: " << hidl_ret.description();
+        factory_2_1 = nullptr;
+        factory_2_2 = nullptr;
+        return factory_sw.getProviderCapabilities(session_type, _aidl_return);
     }
     hidl_openProvider_future.get();
     return ndk::ScopedAStatus::ok();
@@ -529,20 +556,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProviderFactory::getProviderInfo(
         SessionType session_type, std::optional<ProviderInfo>* _aidl_return) {
     if (isHardwareSessionType(session_type)) {
         *_aidl_return = std::nullopt;
-
-        // Implementing getProviderInfo equates supporting
-        // A2dp codec extensibility.
-        // A2dp Codec extensibility cannot be enabled until the following
-        // requirements are fulfilled.
-        //
-        //  1. The Bluetooth controller must support the HCI Requirements
-        //     v1.04 or later, and must support the vendor HCI command
-        //     A2DP Offload Start (v2), A2DP Offload Stop (v2) as indicated
-        //     by the field a2dp_offload_v2 of the vendor capabilities.
-        //
-        //  2. The implementation of the provider must be completed with
-        //     DSP configuration for streaming.
-        return ndk::ScopedAStatus::fromStatus(STATUS_UNKNOWN_TRANSACTION);
+        return ndk::ScopedAStatus::ok();
     }
 
     return factory_sw.getProviderInfo(session_type, _aidl_return);

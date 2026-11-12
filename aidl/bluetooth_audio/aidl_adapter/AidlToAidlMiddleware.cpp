@@ -34,19 +34,23 @@ AidlToAidlMiddleware::AidlToAidlMiddleware(
     : port(port) {}
 
 ndk::ScopedAStatus AidlToAidlMiddleware::startStream(bool is_low_latency) {
+    if (!port) return ndk::ScopedAStatus::fromExceptionCode(EX_NULL_POINTER);
     return port->startStream(is_low_latency);
 }
 
 ndk::ScopedAStatus AidlToAidlMiddleware::suspendStream() {
+    if (!port) return ndk::ScopedAStatus::fromExceptionCode(EX_NULL_POINTER);
     return port->suspendStream();
 }
 
 ndk::ScopedAStatus AidlToAidlMiddleware::stopStream() {
+    if (!port) return ndk::ScopedAStatus::fromExceptionCode(EX_NULL_POINTER);
     return port->stopStream();
 }
 
 ndk::ScopedAStatus AidlToAidlMiddleware::getPresentationPosition(
         mtk::PresentationPosition* _aidl_return) {
+    if (!port) return ndk::ScopedAStatus::fromExceptionCode(EX_NULL_POINTER);
     PresentationPosition aosp_return;
     auto retval = port->getPresentationPosition(&aosp_return);
     if (retval.isOk()) {
@@ -62,14 +66,17 @@ ndk::ScopedAStatus AidlToAidlMiddleware::getPresentationPosition(
 
 ndk::ScopedAStatus AidlToAidlMiddleware::updateSourceMetadata(
         const SourceMetadata& source_metadata) {
+    if (!port) return ndk::ScopedAStatus::fromExceptionCode(EX_NULL_POINTER);
     return port->updateSourceMetadata(source_metadata);
 }
 
 ndk::ScopedAStatus AidlToAidlMiddleware::updateSinkMetadata(const SinkMetadata& sink_metadata) {
+    if (!port) return ndk::ScopedAStatus::fromExceptionCode(EX_NULL_POINTER);
     return port->updateSinkMetadata(sink_metadata);
 }
 
 ndk::ScopedAStatus AidlToAidlMiddleware::setLatencyMode(mtk::LatencyMode latency_mode) {
+    if (!port) return ndk::ScopedAStatus::fromExceptionCode(EX_NULL_POINTER);
     LatencyMode aosp_mode = LatencyMode::UNKNOWN;
     switch (latency_mode) {
         case mtk::LatencyMode::LOW_LATENCY:
@@ -79,20 +86,20 @@ ndk::ScopedAStatus AidlToAidlMiddleware::setLatencyMode(mtk::LatencyMode latency
             aosp_mode = LatencyMode::FREE;
             break;
         case mtk::LatencyMode::UNKNOWN:
+        default:
             break;
     }
     return port->setLatencyMode(aosp_mode);
 }
 
 ndk::ScopedAStatus AidlToAidlMiddleware::enterGameMode(int8_t enter) {
-    /* TODO: Implement */
-    LOG(FATAL) << "Unsupported method enterGameMode called with argument: " << enter;
-    return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
+    if (!port) return ndk::ScopedAStatus::fromExceptionCode(EX_NULL_POINTER);
+    LOG(DEBUG) << __func__ << ": mapping game mode (" << static_cast<int>(enter)
+               << ") to LatencyMode";
+    LatencyMode aosp_mode = (enter != 0) ? LatencyMode::LOW_LATENCY : LatencyMode::FREE;
+    return port->setLatencyMode(aosp_mode);
 }
 
-// Overriding create binder and inherit RT from caller.
-// In our case, the caller is the AIDL session control, so we match the priority
-// of the AIDL session / AudioFlinger writer thread.
 ndk::SpAIBinder AidlToAidlMiddleware::createBinder() {
     auto binder = mtk::BnBluetoothAudioPort::createBinder();
     AIBinder_setInheritRt(binder.get(), true);

@@ -6,6 +6,8 @@
 
 #define LOG_TAG "mtkaudiohalservice"
 
+#include <cstdlib>
+#include <cstring>
 #include <signal.h>
 #include <string>
 #include <vector>
@@ -70,7 +72,13 @@ static bool registerExternalServiceImplementation(const std::string& libName,
         dlclose(handle);
         return false;
     }
-    return ((*factoryFunction)() == STATUS_OK);
+    if ((*factoryFunction)() != STATUS_OK) {
+        ALOGE("Factory function %s in %s returned non-OK status", funcName.c_str(),
+              libPath.c_str());
+        dlclose(handle);
+        return false;
+    }
+    return true;
 }
 
 /** Try to register the provided factories in the provided order.
@@ -93,7 +101,9 @@ static std::shared_ptr<T> loadVendorAidlImpl(const char* libPath, const char* ct
                                              const char* dtorSymb) {
     void* handle = dlopen(libPath, RTLD_NOW | RTLD_GLOBAL);
     if (!handle) {
-        LOG(ERROR) << "Failed to dlopen " << libPath;
+        const char* error = dlerror();
+        LOG(ERROR) << "Failed to dlopen " << libPath << ": "
+                   << (error != nullptr ? error : "unknown error");
         return nullptr;
     }
 
@@ -112,6 +122,12 @@ static std::shared_ptr<T> loadVendorAidlImpl(const char* libPath, const char* ct
     }
 
     void* mem = aligned_alloc(alignof(std::max_align_t), 4096);
+    if (!mem) {
+        LOG(ERROR) << "Failed to allocate memory for " << libPath;
+        dlclose(handle);
+        return nullptr;
+    }
+    std::memset(mem, 0, 4096);
     ctor(mem);
 
     return std::shared_ptr<T>(reinterpret_cast<T*>(mem), [handle, dtor](T* p) {
@@ -129,15 +145,15 @@ int main(int /* argc */, char* /* argv */[]) {
         ::android::ProcessState::self()->startThreadPool();
     }
 
-    ABinderProcess_setThreadPoolMaxThreadCount(1);
+    ABinderProcess_setThreadPoolMaxThreadCount(16);
     ABinderProcess_startThreadPool();
 
-    const int32_t defaultValue = -1;
+    const int32_t defaultValue = 1024;
     int32_t value =
             property_get_int32("persist.vendor.audio.service.hwbinder.size_kbyte", defaultValue);
-    if (value != defaultValue) {
+    if (value > 0) {
         ALOGD("Configuring hwbinder with mmap size %d KBytes", value);
-        ProcessState::initWithMmapSize(static_cast<size_t>(value) * 1024);
+        ::android::hardware::ProcessState::initWithMmapSize(static_cast<size_t>(value) * 1024);
     }
     configureRpcThreadpool(16, true /*callerWillJoin*/);
 
@@ -167,7 +183,7 @@ int main(int /* argc */, char* /* argv */[]) {
         }
     };
 
-    const std::vector<std::pair<std::string,std::string>> optionalInterfaceSharedLibs = {
+    const std::vector<std::pair<std::string, std::string>> optionalInterfaceSharedLibs = {
         {
             "android.hardware.bluetooth.audio-impl-mediatek",
             "createIBluetoothAudioProviderFactory",
@@ -225,7 +241,8 @@ int main(int /* argc */, char* /* argv */[]) {
                 std::string() + ISoundTriggerHw::descriptor + "/default";
         binder_status_t soundTriggerHw_status = AServiceManager_addService(
                 mtkSoundTriggerHw->asBinder().get(), soundTriggerHw_instance.c_str());
-        CHECK_EQ(soundTriggerHw_status, STATUS_OK);
+        ALOGE_IF(soundTriggerHw_status != STATUS_OK, "Could not register %s, status=%d",
+                 soundTriggerHw_instance.c_str(), soundTriggerHw_status);
     }
 
     auto mtkAudio = loadVendorAidlImpl<BnMtkAudio>(
@@ -236,7 +253,8 @@ int main(int /* argc */, char* /* argv */[]) {
         const std::string instance = std::string() + IMtkAudio::descriptor + "/default";
         binder_status_t mtkAudio_status =
                 AServiceManager_addService(mtkAudio->asBinder().get(), instance.c_str());
-        CHECK_EQ(mtkAudio_status, STATUS_OK);
+        ALOGE_IF(mtkAudio_status != STATUS_OK, "Could not register %s, status=%d", instance.c_str(),
+                 mtkAudio_status);
     }
 
     joinRpcThreadpool();

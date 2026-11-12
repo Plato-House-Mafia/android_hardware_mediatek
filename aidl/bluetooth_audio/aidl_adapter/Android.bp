@@ -6,6 +6,11 @@ cc_library_shared {
         "latest_vendor_mediatek_hardware_bluetooth_audio_ndk_shared",
     ],
     cpp_std: "gnu++23",
+    cflags: [
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+    ],
     srcs: [
         "AidlToAidlMiddleware.cpp",
         "MTKBluetoothAudioProvider.cpp",

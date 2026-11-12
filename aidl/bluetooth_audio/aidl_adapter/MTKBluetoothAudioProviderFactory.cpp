@@ -59,6 +59,9 @@ inline mtk::SessionType to_session_type_mtk(const SessionType& session_type_aidl
 }
 
 inline bool isHardwareSessionType(const SessionType& session_type_aidl) {
+    if (to_session_type_mtk(session_type_aidl) == mtk::SessionType::UNKNOWN) {
+        return false;
+    }
     switch (session_type_aidl) {
         case SessionType::A2DP_HARDWARE_OFFLOAD_ENCODING_DATAPATH:
         case SessionType::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH:
@@ -80,6 +83,7 @@ inline bool isHardwareSessionType(const SessionType& session_type_aidl) {
         case SessionType::HFP_SOFTWARE_DECODING_DATAPATH:
         case SessionType::LE_AUDIO_BROADCAST_SOFTWARE_DECODING_DATAPATH:
         case SessionType::UNKNOWN:
+        default:
             return false;
     }
 }
@@ -93,6 +97,7 @@ inline ChannelMode from_channel_mode_mtk(const mtk::ChannelMode& channelMode) {
         case mtk::ChannelMode::STEREO:
             return ChannelMode::STEREO;
     }
+    return ChannelMode::UNKNOWN;
 }
 
 inline PcmCapabilities from_pcm_capabilities_mtk(const mtk::PcmCapabilities& capabilities) {
@@ -118,6 +123,7 @@ inline SbcChannelMode from_sbc_channel_mode_mtk(const mtk::SbcChannelMode& chann
         case mtk::SbcChannelMode::MONO:
             return SbcChannelMode::MONO;
     }
+    return SbcChannelMode::UNKNOWN;
 }
 
 inline SbcAllocMethod from_sbc_alloc_method_mtk(const mtk::SbcAllocMethod& allocMethod) {
@@ -127,6 +133,7 @@ inline SbcAllocMethod from_sbc_alloc_method_mtk(const mtk::SbcAllocMethod& alloc
         case mtk::SbcAllocMethod::ALLOC_MD_L:
             return SbcAllocMethod::ALLOC_MD_L;
     }
+    return SbcAllocMethod::ALLOC_MD_L;
 }
 
 inline SbcCapabilities from_sbc_capabilities_mtk(const mtk::SbcCapabilities& capabilities) {
@@ -157,6 +164,7 @@ inline AacObjectType from_aac_object_type_mtk(const mtk::AacObjectType& objectTy
         case mtk::AacObjectType::MPEG4_SCALABLE:
             return AacObjectType::MPEG4_SCALABLE;
     }
+    return AacObjectType::MPEG2_LC;
 }
 
 inline AacCapabilities from_aac_capabilities_mtk(const mtk::AacCapabilities& capabilities) {
@@ -183,6 +191,7 @@ inline LdacChannelMode from_ldac_channel_mode_mtk(const mtk::LdacChannelMode& ch
         case mtk::LdacChannelMode::MONO:
             return LdacChannelMode::MONO;
     }
+    return LdacChannelMode::UNKNOWN;
 }
 
 inline LdacQualityIndex from_ldac_quality_index_mtk(const mtk::LdacQualityIndex& qualityIndex) {
@@ -196,6 +205,7 @@ inline LdacQualityIndex from_ldac_quality_index_mtk(const mtk::LdacQualityIndex&
         case mtk::LdacQualityIndex::ABR:
             return LdacQualityIndex::ABR;
     }
+    return LdacQualityIndex::ABR;
 }
 
 inline LdacCapabilities from_ldac_capabilities_mtk(const mtk::LdacCapabilities& capabilities) {
@@ -234,6 +244,7 @@ inline AptxAdaptiveChannelMode from_aptx_adaptive_channel_mode_mtk(
         case mtk::AptxAdaptiveChannelMode::UNKNOWN:
             return AptxAdaptiveChannelMode::UNKNOWN;
     }
+    return AptxAdaptiveChannelMode::UNKNOWN;
 }
 
 inline AptxMode from_aptx_mode_mtk(const mtk::AptxMode& mode) {
@@ -247,6 +258,7 @@ inline AptxMode from_aptx_mode_mtk(const mtk::AptxMode& mode) {
         case mtk::AptxMode::ULTRA_LOW_LATENCY:
             return AptxMode::ULTRA_LOW_LATENCY;
     }
+    return AptxMode::UNKNOWN;
 }
 
 inline AptxAdaptiveInputMode from_aptx_adaptive_input_mode_mtk(
@@ -257,6 +269,7 @@ inline AptxAdaptiveInputMode from_aptx_adaptive_input_mode_mtk(
         case mtk::AptxAdaptiveInputMode::DUAL_MONO:
             return AptxAdaptiveInputMode::DUAL_MONO;
     }
+    return AptxAdaptiveInputMode::STEREO;
 }
 
 inline AptxAdaptiveCapabilities from_aptx_adaptive_capabilities_mtk(
@@ -306,8 +319,8 @@ inline Lc3Capabilities from_lc3_capabilities_mtk(const mtk::Lc3Capabilities& cap
 }
 
 inline CodecCapabilities::VendorCapabilities from_lhdcv5_capabilities_mtk(
-        const mtk::Lhdcv5Capabilities& capabilities) {
-    return CodecCapabilities::VendorCapabilities{};  // TODO: Implement this
+        [[maybe_unused]] const mtk::Lhdcv5Capabilities& capabilities) {
+    return CodecCapabilities::VendorCapabilities{};
 }
 
 inline CodecCapabilities::Capabilities from_codec_capabilities_capabilities_mtk(
@@ -358,6 +371,7 @@ inline CodecCapabilities::Capabilities from_codec_capabilities_capabilities_mtk(
                                                               vendorCapabilities>()
                                                  .extension});
         case mtk::CodecCapabilities::Capabilities::lhdcv5Capabilities:
+        default:
             return CodecCapabilities::Capabilities::make<
                     CodecCapabilities::Capabilities::Tag::vendorCapabilities>(
                     from_lhdcv5_capabilities_mtk(
@@ -383,16 +397,14 @@ inline CodecType from_codec_type_mtk(const mtk::CodecType& codecType) {
         case mtk::CodecType::LC3:
             return CodecType::LC3;
         case mtk::CodecType::VENDOR:
+        case mtk::CodecType::LHDCV3:
+        case mtk::CodecType::LHDCV2:
+        case mtk::CodecType::LHDCV5:
             return CodecType::VENDOR;
         case mtk::CodecType::APTX_ADAPTIVE:
             return CodecType::APTX_ADAPTIVE;
-        case mtk::CodecType::LHDCV3:
-            return CodecType::VENDOR;
-        case mtk::CodecType::LHDCV2:
-            return CodecType::VENDOR;
-        case mtk::CodecType::LHDCV5:
-            return CodecType::VENDOR;
     }
+    return CodecType::UNKNOWN;
 }
 
 inline CodecCapabilities from_codec_capabilities_mtk(const mtk::CodecCapabilities& capabilities) {
@@ -410,6 +422,7 @@ inline AudioLocation from_audio_location_mtk(const mtk::AudioLocation& audioLoca
         case mtk::AudioLocation::FRONT_RIGHT:
             return AudioLocation::FRONT_RIGHT;
     }
+    return AudioLocation::UNKNOWN;
 }
 
 inline UnicastCapability from_unicast_capability_mtk(const mtk::UnicastCapability& capabilities) {
@@ -430,13 +443,14 @@ inline UnicastCapability from_unicast_capability_mtk(const mtk::UnicastCapabilit
                                                       Tag::lc3Capabilities>()))
                             : UnicastCapability::LeAudioCodecCapabilities::make<
                                       UnicastCapability::LeAudioCodecCapabilities::Tag::
-                                              vendorCapabillities>(UnicastCapability::VendorCapabilities{
-                                      .extension =
-                                              capabilities.leAudioCodecCapabilities
-                                                      .get<mtk::UnicastCapability::
-                                                                   LeAudioCodecCapabilities::Tag::
-                                                                           vendorCapabillities>()
-                                                      .extension}),
+                                              vendorCapabillities>(
+                                      UnicastCapability::VendorCapabilities{
+                                              .extension =
+                                                      capabilities.leAudioCodecCapabilities
+                                                              .get<mtk::UnicastCapability::
+                                                                           LeAudioCodecCapabilities::
+                                                                                   Tag::vendorCapabillities>()
+                                                              .extension}),
     };
 }
 
@@ -459,10 +473,11 @@ inline BroadcastCapability from_broadcast_capability_mtk(
                                                                    lc3Capabilities>()
                                               .transform([](auto list) {
                                                   return list |
-                                                         std::views::transform([](auto lc3Capabilities) {
-                                                             return lc3Capabilities.transform(
-                                                                     from_lc3_capabilities_mtk);
-                                                         }) |
+                                                         std::views::transform(
+                                                                 [](auto lc3Capabilities) {
+                                                                     return lc3Capabilities.transform(
+                                                                             from_lc3_capabilities_mtk);
+                                                                 }) |
                                                          std::ranges::to<std::vector>();
                                               }))
                             : BroadcastCapability::LeAudioCodecCapabilities::make<
@@ -510,6 +525,7 @@ inline AudioCapabilities from_audio_capabilities_mtk(const mtk::AudioCapabilitie
                     from_codec_capabilities_mtk(
                             capabilities.get<mtk::AudioCapabilities::Tag::a2dpCapabilities>()));
         case mtk::AudioCapabilities::leAudioCapabilities:
+        default:
             return AudioCapabilities::make<AudioCapabilities::Tag::leAudioCapabilities>(
                     from_le_audio_codec_capabilities_mtk(
                             capabilities.get<mtk::AudioCapabilities::Tag::leAudioCapabilities>()));
@@ -517,12 +533,11 @@ inline AudioCapabilities from_audio_capabilities_mtk(const mtk::AudioCapabilitie
 }
 
 void MTKBluetoothAudioProviderFactory::loadFactoryIfNeeded() {
-    if (factory_hw == nullptr) {
+    if (factory_hw == nullptr || !AIBinder_isAlive(factory_hw->asBinder().get())) {
+        const std::string instance =
+                std::string() + mtk::IBluetoothAudioProviderFactory::descriptor + "/default";
         factory_hw = mtk::IBluetoothAudioProviderFactory::fromBinder(
-                ndk::SpAIBinder(AServiceManager_waitForService(
-                        (std::string() + mtk::IBluetoothAudioProviderFactory::descriptor +
-                         "/default")
-                                .c_str())));
+                ndk::SpAIBinder(AServiceManager_waitForService(instance.c_str())));
     }
 }
 
@@ -535,9 +550,13 @@ ndk::ScopedAStatus MTKBluetoothAudioProviderFactory::openProvider(
     }
 
     loadFactoryIfNeeded();
+    if (factory_hw == nullptr) {
+        return factory_sw.openProvider(session_type, _aidl_return);
+    }
+
     std::shared_ptr<mtk::IBluetoothAudioProvider> mtk_return;
     auto retval = factory_hw->openProvider(to_session_type_mtk(session_type), &mtk_return);
-    if (retval.isOk()) {
+    if (retval.isOk() && mtk_return != nullptr) {
         *_aidl_return = ::ndk::SharedRefBase::make<MTKBluetoothAudioProvider>(mtk_return);
     }
     return retval;
@@ -550,12 +569,16 @@ ndk::ScopedAStatus MTKBluetoothAudioProviderFactory::getProviderCapabilities(
     }
 
     loadFactoryIfNeeded();
+    if (factory_hw == nullptr) {
+        return factory_sw.getProviderCapabilities(session_type, _aidl_return);
+    }
+
     std::vector<mtk::AudioCapabilities> mtk_return;
     auto retval =
             factory_hw->getProviderCapabilities(to_session_type_mtk(session_type), &mtk_return);
     if (retval.isOk()) {
         _aidl_return->resize(mtk_return.size());
-        for (int i = 0; i < mtk_return.size(); i++) {
+        for (size_t i = 0; i < mtk_return.size(); i++) {
             _aidl_return->at(i) = from_audio_capabilities_mtk(mtk_return[i]);
         }
     }
@@ -569,7 +592,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProviderFactory::getProviderInfo(
     }
 
     *_aidl_return = std::nullopt;
-    return ndk::ScopedAStatus::fromStatus(STATUS_UNKNOWN_TRANSACTION);
+    return ndk::ScopedAStatus::ok();
 }
 
 }  // namespace adapter

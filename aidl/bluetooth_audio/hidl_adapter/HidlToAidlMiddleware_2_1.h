@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #include <aidl/android/hardware/bluetooth/audio/IBluetoothAudioPort.h>
 #include <android/hardware/audio/common/5.0/types.h>
 #include <vendor/mediatek/hardware/bluetooth/audio/2.1/IBluetoothAudioPort.h>
@@ -36,7 +38,7 @@ class HidlToAidlMiddleware_2_1 : public IBluetoothAudioPort_2_1 {
     std::shared_ptr<IBluetoothAudioPort_AIDL> port;
 
   public:
-    HidlToAidlMiddleware_2_1(const std::shared_ptr<IBluetoothAudioPort_AIDL>& port);
+    explicit HidlToAidlMiddleware_2_1(const std::shared_ptr<IBluetoothAudioPort_AIDL>& port);
 
     Return<void> startStream() override;
 
@@ -44,9 +46,9 @@ class HidlToAidlMiddleware_2_1 : public IBluetoothAudioPort_2_1 {
 
     Return<void> suspendStream() override;
 
-    Return<void> getPresentationPosition(getPresentationPosition_cb _hidl_cb);
+    Return<void> getPresentationPosition(getPresentationPosition_cb _hidl_cb) override;
 
-    Return<void> updateMetadata(const SourceMetadata_5_0& sourceMetadata);
+    Return<void> updateMetadata(const SourceMetadata_5_0& sourceMetadata) override;
 
     Return<void> enterGameMode(uint8_t enter) override;
 };

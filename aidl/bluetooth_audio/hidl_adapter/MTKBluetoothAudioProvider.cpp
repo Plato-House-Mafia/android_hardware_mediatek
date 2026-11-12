@@ -157,6 +157,7 @@ inline ChannelMode_2_1 to_hidl_channel_mode(const ChannelMode channel_mode) {
         case ChannelMode::MONO:
             return ChannelMode_2_1::MONO;
         case ChannelMode::STEREO:
+        case ChannelMode::DUALMONO:
             return ChannelMode_2_1::STEREO;
         default:
             return ChannelMode_2_1::UNKNOWN;
@@ -168,8 +169,10 @@ inline PcmConfig_2_1 to_hidl_pcm_config_2_1(const PcmConfiguration& pcm_config) 
     hidl_pcm_config.sampleRate = to_hidl_sample_rate_2_1(pcm_config.sampleRateHz);
     hidl_pcm_config.channelMode = to_hidl_channel_mode(pcm_config.channelMode);
     hidl_pcm_config.bitsPerSample = to_hidl_bits_per_sample(pcm_config.bitsPerSample);
-    /* TODO: should this be set based on dataIntervalUs being smaller than 20000? */
-    hidl_pcm_config.isLowLatencyEnabled = LowLatencyEnabled_2_1::Disabled;
+    const bool is_low_latency =
+            (pcm_config.dataIntervalUs > 0 && pcm_config.dataIntervalUs < 20000);
+    hidl_pcm_config.isLowLatencyEnabled =
+            is_low_latency ? LowLatencyEnabled_2_1::Enabled : LowLatencyEnabled_2_1::Disabled;
     return hidl_pcm_config;
 }
 
@@ -184,8 +187,8 @@ inline CodecType_2_2 to_hidl_codec_type_2_2(const CodecType codec_type) {
     return static_cast<CodecType_2_2>(to_hidl_codec_type_2_1(codec_type));
 }
 
-inline SbcConfig_2_1 to_hidl_sbc_config(const SbcConfiguration sbc_config) {
-    SbcConfig_2_1 hidl_sbc_config;
+inline SbcConfig_2_1 to_hidl_sbc_config(const SbcConfiguration& sbc_config) {
+    SbcConfig_2_1 hidl_sbc_config{};
     hidl_sbc_config.minBitpool = sbc_config.minBitpool;
     hidl_sbc_config.maxBitpool = sbc_config.maxBitpool;
     hidl_sbc_config.sampleRate = to_hidl_sample_rate_2_1(sbc_config.sampleRateHz);
@@ -208,8 +211,8 @@ inline SbcConfig_2_1 to_hidl_sbc_config(const SbcConfiguration sbc_config) {
     return hidl_sbc_config;
 }
 
-inline AacConfig_2_1 to_hidl_aac_config(const AacConfiguration aac_config) {
-    AacConfig_2_1 hidl_aac_config;
+inline AacConfig_2_1 to_hidl_aac_config(const AacConfiguration& aac_config) {
+    AacConfig_2_1 hidl_aac_config{};
     hidl_aac_config.sampleRate = to_hidl_sample_rate_2_1(aac_config.sampleRateHz);
     hidl_aac_config.bitsPerSample = to_hidl_bits_per_sample(aac_config.bitsPerSample);
     hidl_aac_config.channelMode = to_hidl_channel_mode(aac_config.channelMode);
@@ -223,8 +226,8 @@ inline AacConfig_2_1 to_hidl_aac_config(const AacConfiguration aac_config) {
     return hidl_aac_config;
 }
 
-inline LdacConfig_2_1 to_hidl_ldac_config(const LdacConfiguration ldac_config) {
-    LdacConfig_2_1 hidl_ldac_config;
+inline LdacConfig_2_1 to_hidl_ldac_config(const LdacConfiguration& ldac_config) {
+    LdacConfig_2_1 hidl_ldac_config{};
     hidl_ldac_config.sampleRate = to_hidl_sample_rate_2_1(ldac_config.sampleRateHz);
     hidl_ldac_config.bitsPerSample = to_hidl_bits_per_sample(ldac_config.bitsPerSample);
     if (ldac_channel_mode_to_hidl_map.find(ldac_config.channelMode) !=
@@ -237,8 +240,8 @@ inline LdacConfig_2_1 to_hidl_ldac_config(const LdacConfiguration ldac_config) {
     return hidl_ldac_config;
 }
 
-inline AptxConfig_2_1 to_hidl_aptx_config(const AptxConfiguration aptx_config) {
-    AptxConfig_2_1 hidl_aptx_config;
+inline AptxConfig_2_1 to_hidl_aptx_config(const AptxConfiguration& aptx_config) {
+    AptxConfig_2_1 hidl_aptx_config{};
     hidl_aptx_config.sampleRate = to_hidl_sample_rate_2_1(aptx_config.sampleRateHz);
     hidl_aptx_config.bitsPerSample = to_hidl_bits_per_sample(aptx_config.bitsPerSample);
     hidl_aptx_config.channelMode = to_hidl_channel_mode(aptx_config.channelMode);
@@ -246,7 +249,7 @@ inline AptxConfig_2_1 to_hidl_aptx_config(const AptxConfiguration aptx_config) {
 }
 
 inline CodecConfig_2_1 to_hidl_codec_config_2_1(const CodecConfiguration& codec_config) {
-    CodecConfig_2_1 hidl_codec_config;
+    CodecConfig_2_1 hidl_codec_config{};
     hidl_codec_config.codecType = to_hidl_codec_type_2_1(codec_config.codecType);
     hidl_codec_config.encodedAudioBitrate = static_cast<uint32_t>(codec_config.encodedAudioBitrate);
     hidl_codec_config.peerMtu = static_cast<uint32_t>(codec_config.peerMtu);
@@ -275,7 +278,7 @@ inline CodecConfig_2_1 to_hidl_codec_config_2_1(const CodecConfiguration& codec_
 }
 
 inline AudioConfig_2_1 to_hidl_audio_config_2_1(const AudioConfiguration& audio_config) {
-    AudioConfig_2_1 hidl_audio_config;
+    AudioConfig_2_1 hidl_audio_config{};
     if (audio_config.getTag() == AudioConfiguration::pcmConfig) {
         hidl_audio_config.pcmConfig(
                 to_hidl_pcm_config_2_1(audio_config.get<AudioConfiguration::pcmConfig>()));
@@ -287,7 +290,7 @@ inline AudioConfig_2_1 to_hidl_audio_config_2_1(const AudioConfiguration& audio_
 }
 
 inline PcmConfig_2_2 to_hidl_pcm_config_2_2(const PcmConfiguration& pcm_config) {
-    PcmConfig_2_2 hidl_pcm_config;
+    PcmConfig_2_2 hidl_pcm_config{};
     hidl_pcm_config.sampleRate = to_hidl_sample_rate_2_2(pcm_config.sampleRateHz);
     hidl_pcm_config.channelMode = to_hidl_channel_mode(pcm_config.channelMode);
     hidl_pcm_config.bitsPerSample = to_hidl_bits_per_sample(pcm_config.bitsPerSample);
@@ -296,13 +299,16 @@ inline PcmConfig_2_2 to_hidl_pcm_config_2_2(const PcmConfiguration& pcm_config) 
 }
 
 inline Lc3Config_2_2 to_hidl_lc3_config_2_2(const Lc3Configuration& lc3_config) {
-    Lc3Config_2_2 hidl_lc3_config;
+    Lc3Config_2_2 hidl_lc3_config{};
     hidl_lc3_config.pcmBitDepth = to_hidl_bits_per_sample(lc3_config.pcmBitDepth);
     hidl_lc3_config.samplingFrequency = to_hidl_sample_rate_2_2(lc3_config.samplingFrequencyHz);
-    if (lc3_config.samplingFrequencyHz == 10000)
+    if (lc3_config.frameDurationUs == 10000) {
         hidl_lc3_config.frameDuration = Lc3FrameDuration_2_2::DURATION_10000US;
-    else if (lc3_config.samplingFrequencyHz == 7500)
+    } else if (lc3_config.frameDurationUs == 7500) {
         hidl_lc3_config.frameDuration = Lc3FrameDuration_2_2::DURATION_7500US;
+    } else {
+        hidl_lc3_config.frameDuration = Lc3FrameDuration_2_2::DURATION_10000US;
+    }
     hidl_lc3_config.octetsPerFrame = static_cast<uint32_t>(lc3_config.octetsPerFrame);
     hidl_lc3_config.blocksPerSdu = static_cast<uint32_t>(lc3_config.blocksPerSdu);
     return hidl_lc3_config;
@@ -311,15 +317,16 @@ inline Lc3Config_2_2 to_hidl_lc3_config_2_2(const Lc3Configuration& lc3_config) 
 inline Lc3CodecConfig_2_2 to_hidl_leaudio_config_2_2(const LeAudioConfiguration& unicast_config) {
     Lc3CodecConfig_2_2 hidl_lc3_codec_config = {
             .audioChannelAllocation = 0,
-            .encodedAudioBitrate = 0,                   // TODO: What should this be set to?
-            .plc_method = PlcMethod_2_2::STANDARD_PLC,  // TODO: What should this be set to?
-            .le_audio_type = 0,                         // TODO: What should this be set to?
+            .encodedAudioBitrate = 0,
+            .plc_method = PlcMethod_2_2::STANDARD_PLC,
+            .le_audio_type = 0,
     };
     hidl_lc3_codec_config.codecType = to_hidl_codec_type_2_2(unicast_config.codecType);
-    if (unicast_config.leAudioCodecConfig.getTag() == LeAudioCodecConfiguration::lc3Config) {
-        LOG(FATAL) << __func__ << ": unexpected codec type(vendor?)";
+    if (unicast_config.leAudioCodecConfig.getTag() != LeAudioCodecConfiguration::lc3Config) {
+        LOG(ERROR) << __func__ << ": unexpected codec type(vendor?)";
+        return hidl_lc3_codec_config;
     }
-    auto& le_codec_config =
+    const auto& le_codec_config =
             unicast_config.leAudioCodecConfig.get<LeAudioCodecConfiguration::lc3Config>();
 
     hidl_lc3_codec_config.lc3Config = to_hidl_lc3_config_2_2(le_codec_config);
@@ -334,21 +341,22 @@ inline Lc3CodecConfig_2_2 to_hidl_leaudio_broadcast_config_2_2(
         const LeAudioBroadcastConfiguration& broadcast_config) {
     Lc3CodecConfig_2_2 hidl_lc3_codec_config = {
             .audioChannelAllocation = 0,
-            .encodedAudioBitrate = 0,                   // TODO: What should this be set to?
-            .plc_method = PlcMethod_2_2::STANDARD_PLC,  // TODO: What should this be set to?
-            .le_audio_type = 0,                         // TODO: What should this be set to?
+            .encodedAudioBitrate = 0,
+            .plc_method = PlcMethod_2_2::STANDARD_PLC,
+            .le_audio_type = 0,
     };
     hidl_lc3_codec_config.codecType = to_hidl_codec_type_2_2(broadcast_config.codecType);
-    // NOTE: Broadcast is not officially supported in HIDL
     if (broadcast_config.streamMap.empty()) {
         return hidl_lc3_codec_config;
     }
     if (broadcast_config.streamMap[0].leAudioCodecConfig.getTag() !=
         LeAudioCodecConfiguration::lc3Config) {
-        LOG(FATAL) << __func__ << ": unexpected codec type(vendor?)";
+        LOG(ERROR) << __func__ << ": unexpected codec type(vendor?)";
+        return hidl_lc3_codec_config;
     }
-    auto& le_codec_config = broadcast_config.streamMap[0]
-                                    .leAudioCodecConfig.get<LeAudioCodecConfiguration::lc3Config>();
+    const auto& le_codec_config =
+            broadcast_config.streamMap[0]
+                    .leAudioCodecConfig.get<LeAudioCodecConfiguration::lc3Config>();
     hidl_lc3_codec_config.lc3Config = to_hidl_lc3_config_2_2(le_codec_config);
 
     for (const auto& map : broadcast_config.streamMap) {
@@ -358,7 +366,7 @@ inline Lc3CodecConfig_2_2 to_hidl_leaudio_broadcast_config_2_2(
 }
 
 inline AudioConfig_2_2 to_hidl_audio_config_2_2(const AudioConfiguration& audio_config) {
-    AudioConfig_2_2 hidl_audio_config;
+    AudioConfig_2_2 hidl_audio_config{};
     switch (audio_config.getTag()) {
         case AudioConfiguration::pcmConfig:
             hidl_audio_config.pcmConfig(
@@ -379,7 +387,8 @@ inline AudioConfig_2_2 to_hidl_audio_config_2_2(const AudioConfiguration& audio_
                     audio_config.get<AudioConfiguration::leAudioBroadcastConfig>()));
             break;
         default:
-            LOG(FATAL) << __func__ << ": unexpected AudioConfiguration";
+            LOG(ERROR) << __func__ << ": unexpected AudioConfiguration tag";
+            break;
     }
     return hidl_audio_config;
 }
@@ -396,7 +405,7 @@ inline HidlStatus to_hidl_status(const BluetoothAudioStatus& status) {
 }
 
 struct BluetoothAudioProviderContext {
-    std::shared_ptr<MTKBluetoothAudioProvider> provider;
+    std::weak_ptr<MTKBluetoothAudioProvider> provider;
 };
 
 static void binderUnlinkedCallbackAidl(void* cookie) {
@@ -410,7 +419,9 @@ static void binderDiedCallbackAidl(void* cookie) {
     BluetoothAudioProviderContext* ctx = static_cast<BluetoothAudioProviderContext*>(cookie);
     CHECK_NE(ctx, nullptr);
 
-    ctx->provider->endSession();
+    if (auto prov = ctx->provider.lock()) {
+        prov->endSession();
+    }
 }
 
 MTKBluetoothAudioProvider::MTKBluetoothAudioProvider(
@@ -423,13 +434,13 @@ MTKBluetoothAudioProvider::MTKBluetoothAudioProvider(
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::startSession(
         const std::shared_ptr<IBluetoothAudioPort>& host_if, const AudioConfiguration& audio_config,
-        const std::vector<LatencyMode>& latencyModes, DataMQDesc* _aidl_return) {
-    if (host_if == nullptr) {
+        [[maybe_unused]] const std::vector<LatencyMode>& latencyModes, DataMQDesc* _aidl_return) {
+    if (host_if == nullptr || provider_2_1 == nullptr) {
         *_aidl_return = DataMQDesc();
-        LOG(ERROR) << __func__ << " Illegal argument";
+        LOG(ERROR) << __func__ << " Illegal argument or null provider";
         return ndk::ScopedAStatus::fromExceptionCode(EX_ILLEGAL_ARGUMENT);
     }
-    HidlStatus session_status;
+    HidlStatus session_status = HidlStatus::FAILURE;
 
     std::promise<void> hidl_startSession_promise;
     auto hidl_startSession_future = hidl_startSession_promise.get_future();
@@ -445,17 +456,26 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::startSession(
         hidl_startSession_promise.set_value();
     };
     auto stack_if = android::sp<HidlToAidlMiddleware_2_1>::make(host_if);
+    ::android::hardware::Return<void> hidl_ret;
     if (provider_2_2 != nullptr) {
-        provider_2_2->startSession_2_1(stack_if, to_hidl_audio_config_2_2(audio_config), hidl_cb);
+        hidl_ret = provider_2_2->startSession_2_1(stack_if, to_hidl_audio_config_2_2(audio_config),
+                                                  hidl_cb);
     } else {
-        provider_2_1->startSession(stack_if, to_hidl_audio_config_2_1(audio_config), hidl_cb);
+        hidl_ret = provider_2_1->startSession(stack_if, to_hidl_audio_config_2_1(audio_config),
+                                              hidl_cb);
+    }
+    if (!hidl_ret.isOk()) {
+        LOG(ERROR) << __func__ << ": HIDL startSession transaction failed: "
+                   << hidl_ret.description();
+        return ndk::ScopedAStatus::fromExceptionCode(EX_SERVICE_SPECIFIC);
     }
     hidl_startSession_future.get();
     if (session_status == HidlStatus::SUCCESS) {
         stack_iface_ = host_if;
         BluetoothAudioProviderContext* cookie =
                 new BluetoothAudioProviderContext{ref<MTKBluetoothAudioProvider>()};
-        AIBinder_linkToDeath(stack_iface_->asBinder().get(), death_recipient_.get(), cookie);
+        death_cookie_ = cookie;
+        AIBinder_linkToDeath(stack_iface_->asBinder().get(), death_recipient_.get(), death_cookie_);
         return ndk::ScopedAStatus::ok();
     } else if (session_status == HidlStatus::UNSUPPORTED_CODEC_CONFIGURATION) {
         return ndk::ScopedAStatus::fromExceptionCode(EX_ILLEGAL_ARGUMENT);
@@ -466,36 +486,51 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::startSession(
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::endSession() {
     if (stack_iface_ != nullptr) {
-        AIBinder_unlinkToDeath(stack_iface_->asBinder().get(), death_recipient_.get(), this);
+        if (death_cookie_ != nullptr) {
+            AIBinder_unlinkToDeath(stack_iface_->asBinder().get(), death_recipient_.get(),
+                                   death_cookie_);
+            death_cookie_ = nullptr;
+        }
         stack_iface_ = nullptr;
     } else {
         LOG(INFO) << __func__ << " - has NO session";
     }
-    provider_2_1->endSession();
+    if (provider_2_1 != nullptr) {
+        auto ret = provider_2_1->endSession();
+        if (!ret.isOk()) {
+            LOG(ERROR) << __func__ << ": HIDL endSession failed: " << ret.description();
+        }
+    }
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::streamStarted(BluetoothAudioStatus status) {
-    provider_2_1->streamStarted(to_hidl_status(status));
+    if (provider_2_1 != nullptr) {
+        auto ret = provider_2_1->streamStarted(to_hidl_status(status));
+        if (!ret.isOk()) {
+            LOG(ERROR) << __func__ << ": HIDL streamStarted failed: " << ret.description();
+        }
+    }
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::streamSuspended(BluetoothAudioStatus status) {
-    provider_2_1->streamSuspended(to_hidl_status(status));
+    if (provider_2_1 != nullptr) {
+        auto ret = provider_2_1->streamSuspended(to_hidl_status(status));
+        if (!ret.isOk()) {
+            LOG(ERROR) << __func__ << ": HIDL streamSuspended failed: " << ret.description();
+        }
+    }
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::updateAudioConfiguration(
-        const AudioConfiguration& audio_config) {
-    // AOSP implementation of HIDL adapter will not notify HAL of this,
-    // so we don't need to do anything here.
+        [[maybe_unused]] const AudioConfiguration& audio_config) {
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus MTKBluetoothAudioProvider::setLowLatencyModeAllowed(bool allowed) {
-    // AOSP implementation of HIDL adapter will not notify HAL of this,
-    // so we don't need to do anything here.
-    /* TODO: but maybe we _want_ to do something here? we do have enterGameMode... */
+ndk::ScopedAStatus MTKBluetoothAudioProvider::setLowLatencyModeAllowed(
+        [[maybe_unused]] bool allowed) {
     return ndk::ScopedAStatus::ok();
 }
 
@@ -513,7 +548,6 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::getA2dpConfiguration(
         [[maybe_unused]] const A2dpConfigurationHint& hint,
         [[maybe_unused]] std::optional<A2dpConfiguration>* _aidl_return) {
     LOG(INFO) << __func__ << " - is illegal";
-
     return ndk::ScopedAStatus::fromExceptionCode(EX_ILLEGAL_ARGUMENT);
 }
 
@@ -523,7 +557,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::setCodecPriority(
     (void)in_codecId;
     (void)in_priority;
     return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-};
+}
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioAseConfiguration(
         const std::optional<std::vector<
@@ -541,7 +575,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioAseConfiguration(
     (void)in_requirements;
     (void)_aidl_return;
     return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-};
+}
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioAseQosConfiguration(
         const ::aidl::android::hardware::bluetooth::audio::IBluetoothAudioProvider::
@@ -551,7 +585,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioAseQosConfiguration(
     (void)in_qosRequirement;
     (void)_aidl_return;
     return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-};
+}
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioAseDatapathConfiguration(
         const std::optional<
@@ -579,7 +613,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::onSinkAseMetadataChanged(
     (void)cisId;
     (void)in_metadata;
     return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-};
+}
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::onSourceAseMetadataChanged(
         ::aidl::android::hardware::bluetooth::audio::IBluetoothAudioProvider::AseState in_state,
@@ -592,7 +626,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::onSourceAseMetadataChanged(
     (void)cisId;
     (void)in_metadata;
     return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-};
+}
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioBroadcastConfiguration(
         const std::optional<std::vector<
@@ -606,7 +640,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioBroadcastConfiguration(
     (void)in_requirement;
     (void)_aidl_return;
     return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-};
+}
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioBroadcastDatapathConfiguration(
         const ::aidl::android::hardware::bluetooth::audio::AudioContext& in_context,

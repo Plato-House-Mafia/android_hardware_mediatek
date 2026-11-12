@@ -2,6 +2,12 @@ cc_library_shared {
     name: "android.hardware.bluetooth.audio-impl-mediatek-hidl",
     vendor: true,
     defaults: ["latest_android_hardware_bluetooth_audio_ndk_shared"],
+    cpp_std: "gnu++23",
+    cflags: [
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+    ],
     srcs: [
         "HidlToAidlMiddleware.cpp",
         "MTKBluetoothAudioProvider.cpp",

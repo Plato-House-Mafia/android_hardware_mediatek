@@ -19,6 +19,7 @@
 #include <aidl/android/hardware/audio/common/SourceMetadata.h>
 #include <aidl/android/hardware/bluetooth/audio/AudioConfiguration.h>
 #include <aidl/android/hardware/bluetooth/audio/BluetoothAudioStatus.h>
+#include <aidl/android/hardware/bluetooth/audio/LatencyMode.h>
 #include <aidl/android/hardware/bluetooth/audio/SessionType.h>
 #include <android-base/logging.h>
 
@@ -43,22 +44,32 @@ HidlToAidlMiddleware_2_1::HidlToAidlMiddleware_2_1(
     : port(port) {}
 
 Return<void> HidlToAidlMiddleware_2_1::startStream() {
-    port->startStream(false);
+    if (port) {
+        port->startStream(false);
+    }
     return Void();
 }
 
 Return<void> HidlToAidlMiddleware_2_1::stopStream() {
-    port->stopStream();
+    if (port) {
+        port->stopStream();
+    }
     return Void();
 }
 
 Return<void> HidlToAidlMiddleware_2_1::suspendStream() {
-    port->suspendStream();
+    if (port) {
+        port->suspendStream();
+    }
     return Void();
 }
 
 Return<void> HidlToAidlMiddleware_2_1::getPresentationPosition(
         getPresentationPosition_cb _hidl_cb) {
+    if (!port) {
+        _hidl_cb(HidlStatus::FAILURE, 0, 0, {.tvSec = 0, .tvNSec = 0});
+        return Void();
+    }
     PresentationPosition presentation_position;
     auto ret_val = port->getPresentationPosition(&presentation_position);
     if (ret_val.isOk()) {
@@ -75,6 +86,9 @@ Return<void> HidlToAidlMiddleware_2_1::getPresentationPosition(
 }
 
 Return<void> HidlToAidlMiddleware_2_1::updateMetadata(const SourceMetadata_5_0& sourceMetadata) {
+    if (!port) {
+        return Void();
+    }
     std::vector<PlaybackTrackMetadata> metadata_vec;
     metadata_vec.reserve(sourceMetadata.tracks.size());
     for (const auto& metadata : sourceMetadata.tracks) {
@@ -89,8 +103,12 @@ Return<void> HidlToAidlMiddleware_2_1::updateMetadata(const SourceMetadata_5_0& 
 }
 
 Return<void> HidlToAidlMiddleware_2_1::enterGameMode(uint8_t enter) {
-    /* TODO: Implement */
-    LOG(FATAL) << "Unsupported method enterGameMode called with argument: " << enter;
+    if (port) {
+        LOG(DEBUG) << __func__ << ": mapping game mode (" << static_cast<int>(enter)
+                   << ") to LatencyMode";
+        LatencyMode aosp_mode = (enter != 0) ? LatencyMode::LOW_LATENCY : LatencyMode::FREE;
+        port->setLatencyMode(aosp_mode);
+    }
     return Void();
 }
 

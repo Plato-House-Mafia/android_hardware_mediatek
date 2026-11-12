@@ -43,16 +43,16 @@ class MTKBluetoothAudioProvider : public BnBluetoothAudioProvider {
     android::sp<IBluetoothAudioProvider_2_2> provider_2_2;
 
   public:
-    MTKBluetoothAudioProvider(android::sp<IBluetoothAudioProvider_2_1> provider);
+    explicit MTKBluetoothAudioProvider(android::sp<IBluetoothAudioProvider_2_1> provider);
     ndk::ScopedAStatus startSession(const std::shared_ptr<IBluetoothAudioPort>& host_if,
                                     const AudioConfiguration& audio_config,
                                     const std::vector<LatencyMode>& latency_modes,
-                                    DataMQDesc* _aidl_return);
-    ndk::ScopedAStatus endSession();
-    ndk::ScopedAStatus streamStarted(BluetoothAudioStatus status);
-    ndk::ScopedAStatus streamSuspended(BluetoothAudioStatus status);
-    ndk::ScopedAStatus updateAudioConfiguration(const AudioConfiguration& audio_config);
-    ndk::ScopedAStatus setLowLatencyModeAllowed(bool allowed);
+                                    DataMQDesc* _aidl_return) override;
+    ndk::ScopedAStatus endSession() override;
+    ndk::ScopedAStatus streamStarted(BluetoothAudioStatus status) override;
+    ndk::ScopedAStatus streamSuspended(BluetoothAudioStatus status) override;
+    ndk::ScopedAStatus updateAudioConfiguration(const AudioConfiguration& audio_config) override;
+    ndk::ScopedAStatus setLowLatencyModeAllowed(bool allowed) override;
     ndk::ScopedAStatus setCodecPriority(const CodecId& in_codecId, int32_t in_priority) override;
     ndk::ScopedAStatus getLeAudioAseConfiguration(
             const std::optional<
@@ -92,10 +92,11 @@ class MTKBluetoothAudioProvider : public BnBluetoothAudioProvider {
     ndk::ScopedAStatus parseA2dpConfiguration(const CodecId& codec_id,
                                               const std::vector<uint8_t>& configuration,
                                               CodecParameters* codec_parameters,
-                                              A2dpStatus* _aidl_return);
+                                              A2dpStatus* _aidl_return) override;
     ndk::ScopedAStatus getA2dpConfiguration(
             const std::vector<A2dpRemoteCapabilities>& remote_a2dp_capabilities,
-            const A2dpConfigurationHint& hint, std::optional<A2dpConfiguration>* _aidl_return);
+            const A2dpConfigurationHint& hint,
+            std::optional<A2dpConfiguration>* _aidl_return) override;
 
     ndk::ScopedAStatus getLeAudioAseCodecConfiguredParameters(
             const std::optional<std::vector<std::optional<
@@ -105,11 +106,12 @@ class MTKBluetoothAudioProvider : public BnBluetoothAudioProvider {
                     ::aidl::android::hardware::bluetooth::audio::LeAudioAseConfiguration>>>&
                     in_sourceAseConfiguration,
             std::optional<::aidl::android::hardware::bluetooth::audio::IBluetoothAudioProvider::
-                                  LeAudioAseCodecConfiguredResponse>* _aidl_return);
+                                  LeAudioAseCodecConfiguredResponse>* _aidl_return) override;
 
   protected:
     std::shared_ptr<IBluetoothAudioPort> stack_iface_;
     ::ndk::ScopedAIBinder_DeathRecipient death_recipient_;
+    void* death_cookie_ = nullptr;
 };
 
 }  // namespace adapter

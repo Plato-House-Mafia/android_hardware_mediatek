@@ -36,20 +36,22 @@ inline mtk::ChannelMode to_channel_mode_mtk(const ChannelMode& channelMode) {
         case ChannelMode::MONO:
             return mtk::ChannelMode::MONO;
         case ChannelMode::STEREO:
-            return mtk::ChannelMode::STEREO;
         case ChannelMode::DUALMONO:
-            return mtk::ChannelMode::UNKNOWN;
+            return mtk::ChannelMode::STEREO;
     }
+    return mtk::ChannelMode::UNKNOWN;
 }
 
 inline mtk::PcmConfiguration to_pcm_configuration_mtk(const PcmConfiguration& configuration) {
+    const bool is_low_latency =
+            (configuration.dataIntervalUs > 0 && configuration.dataIntervalUs < 20000);
     return mtk::PcmConfiguration{
             .sampleRateHz = configuration.sampleRateHz,
             .channelMode = to_channel_mode_mtk(configuration.channelMode),
             .bitsPerSample = configuration.bitsPerSample,
             .dataIntervalUs = configuration.dataIntervalUs,
-            /* TODO: should this be set based on dataIntervalUs being smaller than 20000? */
-            .isLowLatencyEnabled = mtk::LowLatencyEnabled::Disabled,
+            .isLowLatencyEnabled = is_low_latency ? mtk::LowLatencyEnabled::Enabled
+                                                  : mtk::LowLatencyEnabled::Disabled,
     };
 }
 
@@ -66,6 +68,7 @@ inline mtk::SbcChannelMode to_sbc_channel_mode_mtk(const SbcChannelMode& channel
         case SbcChannelMode::MONO:
             return mtk::SbcChannelMode::MONO;
     }
+    return mtk::SbcChannelMode::UNKNOWN;
 }
 
 inline mtk::SbcAllocMethod to_sbc_alloc_method_mtk(const SbcAllocMethod& allocMethod) {
@@ -75,6 +78,7 @@ inline mtk::SbcAllocMethod to_sbc_alloc_method_mtk(const SbcAllocMethod& allocMe
         case SbcAllocMethod::ALLOC_MD_L:
             return mtk::SbcAllocMethod::ALLOC_MD_L;
     }
+    return mtk::SbcAllocMethod::ALLOC_MD_L;
 }
 
 inline mtk::SbcConfiguration to_sbc_configuration_mtk(const SbcConfiguration& configuration) {
@@ -101,6 +105,7 @@ inline mtk::AacObjectType to_aac_object_type_mtk(const AacObjectType& objectType
         case AacObjectType::MPEG4_SCALABLE:
             return mtk::AacObjectType::MPEG4_SCALABLE;
     }
+    return mtk::AacObjectType::MPEG2_LC;
 }
 
 inline mtk::AacConfiguration to_aac_configuration_mtk(const AacConfiguration& configuration) {
@@ -124,6 +129,7 @@ inline mtk::LdacChannelMode to_ldac_channel_mode_mtk(const LdacChannelMode& chan
         case LdacChannelMode::MONO:
             return mtk::LdacChannelMode::MONO;
     }
+    return mtk::LdacChannelMode::UNKNOWN;
 }
 
 inline mtk::LdacQualityIndex to_ldac_quality_index_mtk(const LdacQualityIndex& qualityIndex) {
@@ -137,6 +143,7 @@ inline mtk::LdacQualityIndex to_ldac_quality_index_mtk(const LdacQualityIndex& q
         case LdacQualityIndex::ABR:
             return mtk::LdacQualityIndex::ABR;
     }
+    return mtk::LdacQualityIndex::ABR;
 }
 
 inline mtk::LdacConfiguration to_ldac_configuration_mtk(const LdacConfiguration& configuration) {
@@ -170,6 +177,7 @@ inline mtk::AptxAdaptiveChannelMode to_aptx_adaptive_channel_mode_mtk(
         case AptxAdaptiveChannelMode::UNKNOWN:
             return mtk::AptxAdaptiveChannelMode::UNKNOWN;
     }
+    return mtk::AptxAdaptiveChannelMode::UNKNOWN;
 }
 
 inline mtk::AptxMode to_aptx_mode_mtk(const AptxMode& mode) {
@@ -183,6 +191,7 @@ inline mtk::AptxMode to_aptx_mode_mtk(const AptxMode& mode) {
         case AptxMode::ULTRA_LOW_LATENCY:
             return mtk::AptxMode::ULTRA_LOW_LATENCY;
     }
+    return mtk::AptxMode::UNKNOWN;
 }
 
 inline mtk::AptxAdaptiveInputMode to_aptx_adaptive_input_mode_mtk(
@@ -193,6 +202,7 @@ inline mtk::AptxAdaptiveInputMode to_aptx_adaptive_input_mode_mtk(
         case AptxAdaptiveInputMode::DUAL_MONO:
             return mtk::AptxAdaptiveInputMode::DUAL_MONO;
     }
+    return mtk::AptxAdaptiveInputMode::STEREO;
 }
 
 inline mtk::AptxAdaptiveConfiguration to_aptx_adaptive_configuration_mtk(
@@ -291,7 +301,8 @@ inline mtk::CodecConfiguration::CodecSpecific to_codec_configuration_codec_speci
                     to_codec_configuration_vendor_configuration_mtk(
                             configuration
                                     .get<CodecConfiguration::CodecSpecific::Tag::vendorConfig>()));
-        case CodecConfiguration::CodecSpecific::opusConfig:  // TODO: Implement this
+        case CodecConfiguration::CodecSpecific::opusConfig:
+        default:
             return mtk::CodecConfiguration::CodecSpecific::make<
                     mtk::CodecConfiguration::CodecSpecific::Tag::vendorConfig>(
                     mtk::CodecConfiguration::VendorConfiguration{});
@@ -319,10 +330,9 @@ inline mtk::CodecType to_codec_type_mtk(const CodecType& codecType) {
         case CodecType::APTX_ADAPTIVE:
             return mtk::CodecType::APTX_ADAPTIVE;
         case CodecType::OPUS:
-            return mtk::CodecType::UNKNOWN;
         case CodecType::APTX_ADAPTIVE_LE:
-            return mtk::CodecType::UNKNOWN;
         case CodecType::APTX_ADAPTIVE_LEX:
+        default:
             return mtk::CodecType::UNKNOWN;
     }
 }
@@ -352,11 +362,9 @@ inline mtk::LeAudioCodecConfiguration to_le_audio_codec_configuration_mtk(
                                     configuration
                                             .get<LeAudioCodecConfiguration::Tag::vendorConfig>()
                                             .extension});
-        case LeAudioCodecConfiguration::Tag::aptxAdaptiveLeConfig:  // TODO: Implement this
-            return mtk::LeAudioCodecConfiguration::make<
-                    mtk::LeAudioCodecConfiguration::Tag::vendorConfig>(
-                    mtk::LeAudioCodecConfiguration::VendorConfiguration{});
-        case LeAudioCodecConfiguration::Tag::opusConfig:  // TODO: Implement this
+        case LeAudioCodecConfiguration::Tag::aptxAdaptiveLeConfig:
+        case LeAudioCodecConfiguration::Tag::opusConfig:
+        default:
             return mtk::LeAudioCodecConfiguration::make<
                     mtk::LeAudioCodecConfiguration::Tag::vendorConfig>(
                     mtk::LeAudioCodecConfiguration::VendorConfiguration{});
@@ -415,10 +423,9 @@ inline mtk::AudioConfiguration to_mtk_audio_configuration(const AudioConfigurati
                     mtk::AudioConfiguration::Tag::leAudioBroadcastConfig>(
                     to_le_audio_broadcast_configuration_mtk(
                             configuration.get<AudioConfiguration::Tag::leAudioBroadcastConfig>()));
-        case AudioConfiguration::Tag::hfpConfig:  // TODO: Implement this
-            return mtk::AudioConfiguration::make<mtk::AudioConfiguration::Tag::a2dpConfig>(
-                    mtk::CodecConfiguration{});
-        case AudioConfiguration::Tag::a2dp:  // TODO: Implement this
+        case AudioConfiguration::Tag::hfpConfig:
+        case AudioConfiguration::Tag::a2dp:
+        default:
             return mtk::AudioConfiguration::make<mtk::AudioConfiguration::Tag::a2dpConfig>(
                     mtk::CodecConfiguration{});
     }
@@ -437,10 +444,11 @@ inline mtk::BluetoothAudioStatus to_mtk_status(const BluetoothAudioStatus& statu
         case BluetoothAudioStatus::RECONFIGURATION:
             return mtk::BluetoothAudioStatus::RECONFIGURATION;
     }
+    return mtk::BluetoothAudioStatus::UNKNOWN;
 }
 
 struct BluetoothAudioProviderContext {
-    std::shared_ptr<MTKBluetoothAudioProvider> provider;
+    std::weak_ptr<MTKBluetoothAudioProvider> provider;
 };
 
 static void binderUnlinkedCallbackAidl(void* cookie) {
@@ -454,7 +462,9 @@ static void binderDiedCallbackAidl(void* cookie) {
     BluetoothAudioProviderContext* ctx = static_cast<BluetoothAudioProviderContext*>(cookie);
     CHECK_NE(ctx, nullptr);
 
-    ctx->provider->endSession();
+    if (auto prov = ctx->provider.lock()) {
+        prov->endSession();
+    }
 }
 
 MTKBluetoothAudioProvider::MTKBluetoothAudioProvider(
@@ -485,17 +495,18 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::startSession(
                     case LatencyMode::FREE:
                         return mtk::LatencyMode::FREE;
                     case LatencyMode::DYNAMIC_SPATIAL_AUDIO_SOFTWARE:
-                        return mtk::LatencyMode::LOW_LATENCY;  // TODO: is this ok?
                     case LatencyMode::DYNAMIC_SPATIAL_AUDIO_HARDWARE:
-                        return mtk::LatencyMode::LOW_LATENCY;  // TODO: is this ok?
+                        return mtk::LatencyMode::LOW_LATENCY;
                 }
+                return mtk::LatencyMode::UNKNOWN;
             }) | std::ranges::to<std::vector>(),
             _aidl_return);
     if (retval.isOk()) {
         stack_iface_ = host_if;
         BluetoothAudioProviderContext* cookie =
                 new BluetoothAudioProviderContext{ref<MTKBluetoothAudioProvider>()};
-        AIBinder_linkToDeath(stack_iface_->asBinder().get(), death_recipient_.get(), cookie);
+        death_cookie_ = cookie;
+        AIBinder_linkToDeath(stack_iface_->asBinder().get(), death_recipient_.get(), death_cookie_);
         return ndk::ScopedAStatus::ok();
     } else {
         return retval;
@@ -504,7 +515,11 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::startSession(
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::endSession() {
     if (stack_iface_ != nullptr) {
-        AIBinder_unlinkToDeath(stack_iface_->asBinder().get(), death_recipient_.get(), this);
+        if (death_cookie_ != nullptr) {
+            AIBinder_unlinkToDeath(stack_iface_->asBinder().get(), death_recipient_.get(),
+                                   death_cookie_);
+            death_cookie_ = nullptr;
+        }
         stack_iface_ = nullptr;
     } else {
         LOG(INFO) << __func__ << " - has NO session";
@@ -526,7 +541,6 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::updateAudioConfiguration(
 }
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::setLowLatencyModeAllowed(bool allowed) {
-    /* TODO: maybe we want to call enterGameMode somewhere...? */
     return provider->setLowLatencyModeAllowed(allowed);
 }
 
@@ -544,7 +558,6 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::getA2dpConfiguration(
         [[maybe_unused]] const A2dpConfigurationHint& hint,
         [[maybe_unused]] std::optional<A2dpConfiguration>* _aidl_return) {
     LOG(INFO) << __func__ << " - is illegal";
-
     return ndk::ScopedAStatus::fromExceptionCode(EX_ILLEGAL_ARGUMENT);
 }
 
@@ -554,7 +567,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::setCodecPriority(
     (void)in_codecId;
     (void)in_priority;
     return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-};
+}
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioAseConfiguration(
         const std::optional<std::vector<
@@ -572,7 +585,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioAseConfiguration(
     (void)in_requirements;
     (void)_aidl_return;
     return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-};
+}
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioAseQosConfiguration(
         const ::aidl::android::hardware::bluetooth::audio::IBluetoothAudioProvider::
@@ -582,7 +595,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioAseQosConfiguration(
     (void)in_qosRequirement;
     (void)_aidl_return;
     return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-};
+}
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioAseDatapathConfiguration(
         const std::optional<
@@ -610,7 +623,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::onSinkAseMetadataChanged(
     (void)cisId;
     (void)in_metadata;
     return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-};
+}
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::onSourceAseMetadataChanged(
         ::aidl::android::hardware::bluetooth::audio::IBluetoothAudioProvider::AseState in_state,
@@ -623,7 +636,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::onSourceAseMetadataChanged(
     (void)cisId;
     (void)in_metadata;
     return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-};
+}
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioBroadcastConfiguration(
         const std::optional<std::vector<
@@ -637,7 +650,7 @@ ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioBroadcastConfiguration(
     (void)in_requirement;
     (void)_aidl_return;
     return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-};
+}
 
 ndk::ScopedAStatus MTKBluetoothAudioProvider::getLeAudioBroadcastDatapathConfiguration(
         const ::aidl::android::hardware::bluetooth::audio::AudioContext& in_context,

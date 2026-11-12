@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #include <aidl/android/hardware/bluetooth/audio/IBluetoothAudioPort.h>
 #include <aidl/vendor/mediatek/hardware/bluetooth/audio/BnBluetoothAudioPort.h>
 
@@ -31,7 +33,7 @@ namespace mtk = ::aidl::vendor::mediatek::hardware::bluetooth::audio;
 
 class AidlToAidlMiddleware : public mtk::BnBluetoothAudioPort {
   public:
-    AidlToAidlMiddleware(
+    explicit AidlToAidlMiddleware(
             const std::shared_ptr<::aidl::android::hardware::bluetooth::audio::IBluetoothAudioPort>&
                     port);
 
